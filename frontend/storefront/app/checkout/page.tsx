@@ -7,7 +7,7 @@ import { getCustomerDashboard, getCustomerProfile } from "@/src/lib/commerce/cus
 import { getCountryRegions } from "@/src/lib/commerce/directory";
 import { dedupeUsStateOptions, US_COUNTRY_CODE, US_COUNTRY_LABEL, US_STATE_OPTIONS } from "@/src/lib/forms/us-states";
 import { readCartCookie, readCustomerTokenCookie } from "@/src/lib/session-cookies";
-import type { CustomerAddress } from "@/src/lib/commerce/types";
+import type { CheckoutReadiness, CustomerAddress } from "@/src/lib/commerce/types";
 import { ui } from "@/src/ui/styles";
 
 export const metadata: Metadata = {
@@ -92,6 +92,34 @@ function getCheckoutNotice(searchParams: SearchParams | undefined): { type: "err
   };
 
   return { type: "error", message: byReason[reason ?? ""] ?? "Checkout failed. Please try again." };
+}
+
+export type CheckoutUiState = {
+  visibleReadinessReasons: string[];
+  hasMissingShippingMethods: boolean;
+  hasMissingPaymentMethods: boolean;
+  canPlaceOrder: boolean;
+};
+
+export function getCheckoutUiState(readiness: CheckoutReadiness, hasCustomerSession: boolean): CheckoutUiState {
+  const hasMissingShippingMethods = !readiness.isVirtual && readiness.availableShippingMethods.length === 0;
+  const hasMissingPaymentMethods = readiness.availablePaymentMethods.length === 0;
+  const visibleReadinessReasons = readiness.reasons.filter((reason) => {
+    if (hasCustomerSession && reason === "Guest email is required before placing order.") {
+      return false;
+    }
+    if (!readiness.isVirtual && readiness.availableShippingMethods.length > 0 && reason === "Shipping method is not selected yet.") {
+      return false;
+    }
+    return true;
+  });
+
+  return {
+    visibleReadinessReasons,
+    hasMissingShippingMethods,
+    hasMissingPaymentMethods,
+    canPlaceOrder: !hasMissingShippingMethods && !hasMissingPaymentMethods
+  };
 }
 
 export default async function CheckoutPage({
@@ -180,9 +208,7 @@ export default async function CheckoutPage({
       </section>
     );
   }
-  const visibleReadinessReasons = readiness.reasons.filter(
-    (reason) => !(hasCustomerSession && reason === "Guest email is required before placing order."),
-  );
+  const checkoutUiState = getCheckoutUiState(readiness, hasCustomerSession);
 
   return (
     <section className="mx-auto max-w-3xl space-y-6">
@@ -228,14 +254,27 @@ export default async function CheckoutPage({
           Payment methods available: {readiness.availablePaymentMethods.length}
         </p>
 
-        {visibleReadinessReasons.length > 0 ? (
+        {checkoutUiState.visibleReadinessReasons.length > 0 ? (
           <div className={ui.state.warning + " mt-3"}>
             <p className="font-medium">Checkout readiness notices:</p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
-              {visibleReadinessReasons.map((reason: string) => (
+              {checkoutUiState.visibleReadinessReasons.map((reason: string) => (
                 <li key={reason}>{reason}</li>
               ))}
             </ul>
+          </div>
+        ) : null}
+
+        {checkoutUiState.hasMissingShippingMethods ? (
+          <div className={ui.state.warning + " mt-3"}>
+            <p className="font-medium">No shipping methods are currently available for this cart.</p>
+            <p className="mt-1 text-sm">
+              Verify shipping address details or return to cart and try again.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href="/cart" className={ui.action.buttonSecondary}>Back to cart</Link>
+              <Link href="/account/addresses" className={ui.action.buttonSecondary}>Manage addresses</Link>
+            </div>
           </div>
         ) : null}
 
@@ -346,6 +385,7 @@ export default async function CheckoutPage({
                 <span className={ui.text.label + " mb-1 block"}>Shipping method *</span>
                 <select
                   name="shipping_method"
+                  disabled={checkoutUiState.hasMissingShippingMethods}
                   className={ui.form.select}
                   defaultValue={
                     readiness.selectedShippingMethod ??
@@ -354,11 +394,15 @@ export default async function CheckoutPage({
                       : "")
                   }
                 >
-                  {readiness.availableShippingMethods.map((method) => (
-                    <option key={`${method.carrierCode}:${method.methodCode}`} value={`${method.carrierCode}:${method.methodCode}`}>
-                      {method.carrierTitle ?? method.carrierCode} - {method.methodTitle ?? method.methodCode}
-                    </option>
-                  ))}
+                  {checkoutUiState.hasMissingShippingMethods ? (
+                    <option value="">No shipping methods available</option>
+                  ) : (
+                    readiness.availableShippingMethods.map((method) => (
+                      <option key={`${method.carrierCode}:${method.methodCode}`} value={`${method.carrierCode}:${method.methodCode}`}>
+                        {method.carrierTitle ?? method.carrierCode} - {method.methodTitle ?? method.methodCode}
+                      </option>
+                    ))
+                  )}
                 </select>
               </label>
             </div>
@@ -377,8 +421,8 @@ export default async function CheckoutPage({
 
           <button
             type="submit"
-            disabled={readiness.availablePaymentMethods.length === 0}
-            className={`${ui.action.buttonPrimary} ${readiness.availablePaymentMethods.length === 0 ? "cursor-not-allowed opacity-60" : ""}`}
+            disabled={!checkoutUiState.canPlaceOrder}
+            className={`${ui.action.buttonPrimary} ${checkoutUiState.canPlaceOrder ? "" : "cursor-not-allowed opacity-60"}`}
           >
             Place order
           </button>
