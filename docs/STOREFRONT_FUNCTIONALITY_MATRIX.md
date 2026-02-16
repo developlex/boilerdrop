@@ -33,7 +33,7 @@ Goals:
 | Header mini-cart indicator | Implemented | Header cart entry now shows live quantity badge and Magento-style hover/focus dropdown preview (items + subtotal + quick actions). | `frontend/storefront/app/layout.tsx`, `frontend/storefront/src/components/header.tsx`, `frontend/storefront/src/lib/commerce/cart.ts` |
 | Cart update quantity | Implemented | Cart item quantity updates are available via storefront server actions using Magento GraphQL cart-item UID mapping. | `frontend/storefront/app/cart/page.tsx`, `frontend/storefront/app/actions/cart.ts`, `frontend/storefront/src/lib/commerce/cart.ts` |
 | Cart remove item | Implemented | Cart item removal is available via storefront server actions and clears cart cookie when cart becomes empty. | `frontend/storefront/app/cart/page.tsx`, `frontend/storefront/app/actions/cart.ts`, `frontend/storefront/src/lib/commerce/cart.ts` |
-| Guest checkout placement | Partial | Dedicated `/checkout` page supports guest and signed-in placement; signed-in checkout now auto-prefills account email/default shipping address. Fallback UX for zero shipping methods remains pending. | `frontend/storefront/app/checkout/page.tsx`, `frontend/storefront/app/actions/checkout.ts`, `frontend/storefront/src/lib/commerce/customer.ts` |
+| Guest checkout placement | Implemented | Dedicated `/checkout` supports guest and signed-in placement, signed-in auto-prefill from account defaults, and explicit fallback UX when zero shipping methods are available (submission disabled + recovery CTA). | `frontend/storefront/app/checkout/page.tsx`, `frontend/storefront/app/actions/checkout.ts`, `frontend/storefront/src/lib/commerce/customer.ts` |
 | Order confirmation | Implemented | Dedicated confirmation surface is available after successful checkout. | `frontend/storefront/app/order/confirmation/page.tsx` |
 | Customer login/logout | Implemented | Customer token generation and logout flow are available, with per-store cookie namespacing to prevent cross-instance auth leakage on shared localhost domain. | `frontend/storefront/app/login/page.tsx`, `frontend/storefront/app/actions/account.ts`, `frontend/storefront/src/lib/session-cookies.ts` |
 | Customer registration | Implemented | Registration route/action is available with create-account + auto-login handoff, prefilled non-sensitive retry fields, and Magento-aligned password hints/strength UX (min length + trim-aware validation). | `frontend/storefront/app/register/page.tsx`, `frontend/storefront/src/components/register-password-fields.tsx`, `frontend/storefront/app/actions/account.ts`, `frontend/storefront/src/lib/commerce/customer.ts` |
@@ -47,9 +47,8 @@ Goals:
 
 ## 4. Immediate Priority Queue
 
-1. Add checkout fallback UX for carts with zero available shipping methods.
-2. Add integration smoke coverage for product -> cart -> checkout placement.
-3. Document GraphQL error-code mapping for checkout and account mutations.
+1. Add integration smoke coverage for product -> cart -> checkout placement.
+2. Document GraphQL error-code mapping for checkout and account mutations.
 
 ## 5. Relationship to Other Documents
 
